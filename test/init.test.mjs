@@ -24,7 +24,8 @@ test("init prints a snippet with piped url + key", async () => {
   assert.equal(code, 0);
   assert.match(out, /"JEV_URL": "https:\/\/jev\.example\.com"/);
   assert.match(out, /"JEV_API_KEY": "secret123"/);
-  assert.match(out, /"command": \["npx", "-y", "@humayunkabir\/jev-router-mcp"\]/);
+  assert.match(out, /"npx"/);
+  assert.match(out, /@humayunkabir\/jev-router-mcp/);
 });
 
 test("init falls back to defaults on empty piped input (does not hang)", async () => {

@@ -51,9 +51,14 @@ npm install -g @humayunkabir/jev-router-mcp
 
 ```bash
 npx -y @humayunkabir/jev-router-mcp init
-# prompts for your Jev server URL + API key, prints a ready-to-paste
-# opencode.json snippet
 ```
+
+Answers two prompts (server URL, API key), then asks "Write to
+`~/.config/opencode/opencode.jsonc`?" — answering **y** merges the server into
+your opencode config automatically (it respects an existing `mcp.servers`
+shape; refuses and prints a snippet if your config is JSONC-with-comments it
+can't safely parse). Use `init --write` to skip the confirmation. Restart
+opencode afterwards.
 
 ### OpenCode (manual)
 

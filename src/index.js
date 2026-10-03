@@ -4,12 +4,15 @@
 //
 // Usage:
 //   jev-router-mcp              speak MCP over stdio
-//   jev-router-mcp init         interactively collect JEV_URL/JEV_API_KEY and
-//                               print a ready-to-paste opencode config snippet
+//   jev-router-mcp init         collect JEV_URL/JEV_API_KEY, then offer to
+//                               write them into your opencode config
+//   jev-router-mcp init --write same, but skip the confirmation prompt
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { askJev, DEFAULT_CRITERIA, adviceFor, envConfig } from "./jev.js";
+import { routerEntry, mergeConfig, configPath, loadConfig, writeConfig, snippet } from "./config.js";
+import fs from "node:fs";
 
 const { url: JEV_URL, apiKey: JEV_API_KEY, instructions: INSTRUCTIONS } = envConfig();
 const VERSION = "0.1.0";
@@ -31,13 +34,22 @@ async function init() {
   try {
     const url = await ask("Jev server URL (default http://localhost:8000): ", "http://localhost:8000");
     const apiKey = await ask("API key (empty for none): ", "");
-    console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
-    console.log(`"jev-router": {`);
-    console.log(`  "type": "local",`);
-    console.log(`  "command": ["npx", "-y", "@humayunkabir/jev-router-mcp"],`);
-    console.log(`  "environment": { "JEV_URL": ${JSON.stringify(url)}, "JEV_API_KEY": ${JSON.stringify(apiKey)} },`);
-    console.log(`  "enabled": true`);
-    console.log(`}`);
+    const entry = routerEntry(url, apiKey);
+    const file = configPath();
+    const existing = loadConfig(file);
+    const willWrite =
+      process.argv.includes("--write") ||
+      (await ask(`Write to ${file}? [y/N] `, "n")).toLowerCase() === "y";
+    if (willWrite && existing === null && fs.existsSync(file)) {
+      console.log(`\nCould not parse ${file} (JSONC with comments?). Edit it manually:\n`);
+      console.log(snippet("jev-router", entry));
+    } else if (willWrite) {
+      writeConfig(file, mergeConfig(existing, "jev-router", entry));
+      console.log(`\nWrote "jev-router" into ${file}. Restart opencode to load the server.`);
+    } else {
+      console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
+      console.log(snippet("jev-router", entry));
+    }
   } finally {
     rl.close();
   }
