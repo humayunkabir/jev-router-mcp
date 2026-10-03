@@ -16,26 +16,31 @@ const VERSION = "0.1.0";
 
 // -- init: interactive setup for first-time installers -----------------------
 async function init() {
-  const isTTY = !!process.stdin.isTTY;
-  if (isTTY) process.stdout.write("Jev server URL (default http://localhost:8000): ");
-  // Read two lines (url, key) from stdin; plain read avoids readline's
-  // EOF/close races entirely and works piped or interactive.
-  const input = await new Promise((resolve) => {
-    let data = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (c) => (data += c));
-    process.stdin.on("end", () => resolve(data));
-  });
-  const [urlRaw = "", keyRaw = ""] = input.split(/\r?\n/);
-  const url = urlRaw.trim() || "http://localhost:8000";
-  const apiKey = keyRaw.trim();
-  console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
-  console.log(`"jev-router": {`);
-  console.log(`  "type": "local",`);
-  console.log(`  "command": ["npx", "-y", "@humayunkabir/jev-router-mcp"],`);
-  console.log(`  "environment": { "JEV_URL": ${JSON.stringify(url)}, "JEV_API_KEY": ${JSON.stringify(apiKey)} },`);
-  console.log(`  "enabled": true`);
-  console.log(`}`);
+  const { createInterface } = await import("node:readline");
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // Ask each field from readline's async iterator: it yields buffered lines in
+  // order (piped input) and waits for each line interactively, resolving
+  // {done:true} on EOF so we fall back to defaults instead of hanging.
+  const iter = rl[Symbol.asyncIterator]();
+  const ask = async (prompt, fallback) => {
+    process.stdout.write(prompt);
+    const { value, done } = await iter.next();
+    if (done || value === undefined) return fallback;
+    return value.trim() || fallback;
+  };
+  try {
+    const url = await ask("Jev server URL (default http://localhost:8000): ", "http://localhost:8000");
+    const apiKey = await ask("API key (empty for none): ", "");
+    console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
+    console.log(`"jev-router": {`);
+    console.log(`  "type": "local",`);
+    console.log(`  "command": ["npx", "-y", "@humayunkabir/jev-router-mcp"],`);
+    console.log(`  "environment": { "JEV_URL": ${JSON.stringify(url)}, "JEV_API_KEY": ${JSON.stringify(apiKey)} },`);
+    console.log(`  "enabled": true`);
+    console.log(`}`);
+  } finally {
+    rl.close();
+  }
 }
 
 // -- decision core: never throws; always returns a text-able verdict ---------
