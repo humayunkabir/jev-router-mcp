@@ -1,34 +1,58 @@
 #!/usr/bin/env node
-// laya-router-mcp: wraps a Laya decision engine as an MCP server so an agent
-// can route a question to the right tool before calling it.
+// jev-router-mcp: wraps a Jev decision engine (e.g. Laya) as an MCP server so
+// an agent can route a question to the right tool before calling it.
+//
+// Usage:
+//   jev-router-mcp              speak MCP over stdio
+//   jev-router-mcp init         interactively collect JEV_URL/JEV_API_KEY and
+//                               print a ready-to-paste opencode config snippet
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { askLaya, DEFAULT_CRITERIA, adviceFor } from "./laya.js";
+import { askJev, DEFAULT_CRITERIA, adviceFor, envConfig } from "./jev.js";
 
-const LAYA_URL = process.env.LAYA_URL ?? "http://localhost:8000";
-const LAYA_API_KEY = process.env.LAYA_API_KEY ?? "";
-const INSTRUCTIONS =
-  process.env.LAYA_ROUTER_INSTRUCTIONS ??
-  "Choose which available tool should answer this question. Pick the one whose description best matches what the question needs.";
-const NAME = "laya-router";
+const { url: JEV_URL, apiKey: JEV_API_KEY, instructions: INSTRUCTIONS } = envConfig();
 const VERSION = "0.1.0";
 
-// -- decision core (shareable): never throws; returns a text-able verdict -----
+// -- init: interactive setup for first-time installers -----------------------
+async function init() {
+  const isTTY = !!process.stdin.isTTY;
+  if (isTTY) process.stdout.write("Jev server URL (default http://localhost:8000): ");
+  // Read two lines (url, key) from stdin; plain read avoids readline's
+  // EOF/close races entirely and works piped or interactive.
+  const input = await new Promise((resolve) => {
+    let data = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (c) => (data += c));
+    process.stdin.on("end", () => resolve(data));
+  });
+  const [urlRaw = "", keyRaw = ""] = input.split(/\r?\n/);
+  const url = urlRaw.trim() || "http://localhost:8000";
+  const apiKey = keyRaw.trim();
+  console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
+  console.log(`"jev-router": {`);
+  console.log(`  "type": "local",`);
+  console.log(`  "command": ["npx", "-y", "@humayunkabir/jev-router-mcp"],`);
+  console.log(`  "environment": { "JEV_URL": ${JSON.stringify(url)}, "JEV_API_KEY": ${JSON.stringify(apiKey)} },`);
+  console.log(`  "enabled": true`);
+  console.log(`}`);
+}
+
+// -- decision core: never throws; always returns a text-able verdict ---------
 async function decide(question, options, instructions) {
   let verdict;
   try {
-    verdict = await askLaya({
+    verdict = await askJev({
       question,
       options,
       instructions,
-      url: LAYA_URL,
-      apiKey: LAYA_API_KEY,
+      url: JEV_URL,
+      apiKey: JEV_API_KEY,
     });
   } catch (err) {
     return {
       error: err.message,
-      advice: "laya unreachable — fall back to your own tool judgment.",
+      advice: "decision server unreachable — fall back to your own tool judgment.",
     };
   }
   return { ...verdict, advice: adviceFor(verdict) };
@@ -36,7 +60,12 @@ async function decide(question, options, instructions) {
 
 const textContent = (obj) => [{ type: "text", text: JSON.stringify(obj, null, 2) }];
 
-const server = new McpServer({ name: NAME, version: VERSION });
+if (process.argv[2] === "init") {
+  await init();
+  process.exit(0);
+}
+
+const server = new McpServer({ name: "jev-router", version: VERSION });
 
 server.registerTool(
   "route_code",
@@ -65,7 +94,7 @@ server.registerTool(
   "route_query",
   {
     description:
-      "Generic router: given a question and a list of tool options (id + when-to-use description), uses the Laya decision engine to pick the best tool. Route_code is a preset of this.",
+      "Generic router: given a question and a list of tool options (id + when-to-use description), uses the decision engine to pick the best tool. Route_code is a preset of this.",
     inputSchema: {
       question: z.string().describe("The question to route."),
       options: z
@@ -77,9 +106,7 @@ server.registerTool(
               .describe("What the tool is good for — when to pick it."),
           }),
         )
-        .describe(
-          "The candidate tools: id + when-to-use description.",
-        ),
+        .describe("The candidate tools: id + when-to-use description."),
     },
   },
   async ({ question, options }) => {

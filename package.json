@@ -1,10 +1,10 @@
 {
-  "name": "@humayunkabir/laya-router-mcp",
+  "name": "@humayunkabir/jev-router-mcp",
   "version": "0.1.0",
-  "description": "MCP server that routes a question to the best tool using a Laya decision engine (/v1/systemone).",
+  "description": "MCP server that routes a question to the best tool using a Jev decision engine (/v1/systemone). Works with any Jev-compatible server — Laya is one.",
   "type": "module",
   "bin": {
-    "laya-router-mcp": "src/index.js"
+    "jev-router-mcp": "src/index.js"
   },
   "files": [
     "src",
@@ -19,7 +19,9 @@
   },
   "keywords": [
     "mcp",
+    "jev",
     "laya",
+    "system1",
     "router",
     "decision",
     "model-context-protocol",
@@ -28,7 +30,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/humayunkabir/laya-router-mcp.git"
+    "url": "git+https://github.com/humayunkabir/jev-router-mcp.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.14.0",

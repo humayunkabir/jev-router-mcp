@@ -1,10 +1,13 @@
-# laya-router-mcp
+# jev-router-mcp
 
 An [MCP](https://modelcontextprotocol.io) server that lets an agent decide
-**which tool should answer a question** using a [Laya](https://github.com/NandhaKishorM/laya)
-decision engine instead of guessing. Point it at any Laya `/v1/systemone`
-endpoint, give it a list of your tools, and it returns the best pick with a
-confidence score.
+**which tool should answer a question** using a
+[Jev](https://github.com/NandhaKishorM/laya) System-1 decision engine instead
+of guessing. It speaks the Jev `/v1/systemone` wire protocol, so it works with
+**any Jev-compatible server** — Laya is the reference implementation.
+
+Give it a question, it returns the best tool pick with a confidence score, and
+the agent calls that tool.
 
 ## What it does
 
@@ -13,14 +16,14 @@ confidence score.
   overview, module wiring, related files), `both`, or `neither` (not a
   code-structure question).
 - `route_query(question, options)` — generic: you pass the tool ids and
-  when-to-use descriptions, Laya picks the winner.
+  when-to-use descriptions, the decision engine picks the winner.
 
-Both return `{ choice, confidence, probabilities, advice }` so the agent
-knows what to call — and when the router is unreachable it says so and tells
-the agent to fall back to its own judgment.
+Both return `{ choice, confidence, probabilities, advice }` so the agent knows
+what to call — and when the server is unreachable it says so and tells the
+agent to fall back to its own judgment.
 
 ```
-$ laya-router-mcp
+$ jev-router-mcp
 → { "choice": "graft", "confidence": 0.39,
     "probabilities": { codegraph: 0.29, graft: 0.39, both: 0.23, neither: 0.09 },
     "advice": "Call the \"graft\" tool." }
@@ -29,24 +32,30 @@ $ laya-router-mcp
 ## Requirements
 
 - Node.js >= 20 (global `fetch`)
-- A running Laya server exposing `POST /v1/systemone` (see the
-  [Laya self-host docs](https://github.com/NandhaKishorM/laya))
+- A running Jev-compatible server exposing `POST /v1/systemone` (e.g. Laya —
+  see its [self-host docs](https://github.com/NandhaKishorM/laya))
 - The tools you route to (e.g. graft, codegraph) configured as MCP servers in
   your client, so the agent can act on the verdict
 
 ## Install
 
-Published on npm:
-
 ```bash
 # run directly
-npx -y @humayunkabir/laya-router-mcp
+npx -y @humayunkabir/jev-router-mcp
 
-# or install globally
-npm install -g @humayunkabir/laya-router-mcp
+# install globally
+npm install -g @humayunkabir/jev-router-mcp
 ```
 
-### OpenCode
+### Quick setup (interactive)
+
+```bash
+npx -y @humayunkabir/jev-router-mcp init
+# prompts for your Jev server URL + API key, prints a ready-to-paste
+# opencode.json snippet
+```
+
+### OpenCode (manual)
 
 Add to your `opencode.json` / `opencode.jsonc`:
 
@@ -54,12 +63,12 @@ Add to your `opencode.json` / `opencode.jsonc`:
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "laya-router": {
+    "jev-router": {
       "type": "local",
-      "command": ["npx", "-y", "@humayunkabir/laya-router-mcp"],
+      "command": ["npx", "-y", "@humayunkabir/jev-router-mcp"],
       "environment": {
-        "LAYA_URL": "http://localhost:8000",
-        "LAYA_API_KEY": "your-laya-bearer-token"
+        "JEV_URL": "http://localhost:8000",
+        "JEV_API_KEY": "your-bearer-token"
       },
       "enabled": true
     }
@@ -73,23 +82,23 @@ stdio server with the `npx` command and the env vars below.
 ### Local checkout
 
 ```bash
-git clone https://github.com/humayunkabir/laya-router-mcp
-cd laya-router-mcp
+git clone https://github.com/humayunkabir/jev-router-mcp
+cd jev-router-mcp
 npm install
 node src/index.js        # speaks MCP over stdio; for config use:
-# "command": ["node", "/path/to/laya-router-mcp/src/index.js"]
+# "command": ["node", "/path/to/jev-router-mcp/src/index.js"]
 ```
 
 ## Configuration
 
 | env var | default | description |
 | --- | --- | --- |
-| `LAYA_URL` | `http://localhost:8000` | Base URL of the Laya server (trailing `/v1/systemone` is normalized). |
-| `LAYA_API_KEY` | *(none)* | Bearer token for `POST /v1/systemone`. Omit for servers without auth. |
-| `LAYA_ROUTER_INSTRUCTIONS` | built-in | Instructions for the `route_query` choice question. |
+| `JEV_URL` | `http://localhost:8000` | Base URL of the decision server (trailing `/v1/systemone` is normalized). |
+| `JEV_API_KEY` | *(none)* | Bearer token for `POST /v1/systemone`. Omit for servers without auth. |
+| `JEV_ROUTER_INSTRUCTIONS` | built-in | Instructions for the `route_query` choice question. |
 
-`LAYA_API_KEY` is optional — the container in the Laya quickstart ships with
-auth, so set it there.
+`LAYA_URL` / `LAYA_API_KEY` are accepted as aliases for `JEV_URL` /
+`JEV_API_KEY`, so existing Laya deployments keep working unchanged.
 
 ## Using it
 
@@ -117,9 +126,9 @@ Example session:
 npm test
 ```
 
-The unit tests cover URL normalization, body building, verdict parsing and
-advice. Set `TEST_LAYA_URL` (and optionally `TEST_LAYA_API_KEY`) to also run
-one live routing test against your Laya server.
+Unit tests cover URL normalization, body building, verdict parsing, advice and
+env aliasing. Set `TEST_JEV_URL` (and optionally `TEST_JEV_API_KEY`) to also
+run a live routing test against your server.
 
 ## License
 

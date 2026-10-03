@@ -1,32 +1,34 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
-  normalizeLayaUrl,
+  normalizeJevUrl,
   buildBody,
   parseVerdict,
   adviceFor,
-  askLaya,
-} from "../src/laya.js";
+  askJev,
+  pickEnv,
+  envConfig,
+} from "../src/jev.js";
 
-describe("normalizeLayaUrl", () => {
+describe("normalizeJevUrl", () => {
   test("defaults to localhost:8000", () => {
-    assert.equal(normalizeLayaUrl(undefined), "http://localhost:8000/v1/systemone");
-    assert.equal(normalizeLayaUrl(""), "http://localhost:8000/v1/systemone");
+    assert.equal(normalizeJevUrl(undefined), "http://localhost:8000/v1/systemone");
+    assert.equal(normalizeJevUrl(""), "http://localhost:8000/v1/systemone");
   });
   test("appends /v1/systemone", () => {
     assert.equal(
-      normalizeLayaUrl("http://laya.local:9000"),
-      "http://laya.local:9000/v1/systemone",
+      normalizeJevUrl("http://jev.local:9000"),
+      "http://jev.local:9000/v1/systemone",
     );
   });
   test("accepts a full /v1/systemone URL", () => {
     assert.equal(
-      normalizeLayaUrl("http://laya.local:9000/v1/systemone"),
-      "http://laya.local:9000/v1/systemone",
+      normalizeJevUrl("http://jev.local:9000/v1/systemone"),
+      "http://jev.local:9000/v1/systemone",
     );
   });
   test("strips a /v1 prefix too", () => {
-    assert.equal(normalizeLayaUrl("http://laya.local:9000/v1"), "http://laya.local:9000/v1/systemone");
+    assert.equal(normalizeJevUrl("http://jev.local:9000/v1"), "http://jev.local:9000/v1/systemone");
   });
 });
 
@@ -64,7 +66,7 @@ describe("parseVerdict", () => {
     assert.deepEqual(verdict.probabilities, { grep: 0.2, graph: 0.7, neither: 0.1 });
   });
   test("throws on a malformed response", () => {
-    assert.throws(() => parseVerdict({ answers: {} }), /unexpected laya response/);
+    assert.throws(() => parseVerdict({ answers: {} }), /unexpected Jev response/);
   });
 });
 
@@ -83,11 +85,38 @@ describe("adviceFor", () => {
   });
 });
 
-describe("askLaya (live, gated)", async () => {
-  const url = process.env.TEST_LAYA_URL;
-  const apiKey = process.env.TEST_LAYA_API_KEY;
-  test("routes a real question when TEST_LAYA_URL is set", { skip: !url }, async () => {
-    const verdict = await askLaya({
+describe("pickEnv", () => {
+  test("prefers JEV_ over LAYA_ alias", () => {
+    process.env.JEV_URL = "http://a";
+    process.env.LAYA_URL = "http://b";
+    assert.equal(pickEnv("URL"), "http://a");
+  });
+  test("falls back to LAYA_ alias", () => {
+    delete process.env.JEV_URL;
+    process.env.LAYA_URL = "http://b";
+    assert.equal(pickEnv("URL"), "http://b");
+  });
+  test("empty when neither is set", () => {
+    delete process.env.JEV_URL;
+    delete process.env.LAYA_URL;
+    assert.equal(pickEnv("URL"), "");
+  });
+  test("envConfig defaults", () => {
+    delete process.env.JEV_URL;
+    delete process.env.LAYA_URL;
+    delete process.env.JEV_API_KEY;
+    delete process.env.LAYA_API_KEY;
+    const cfg = envConfig();
+    assert.equal(cfg.url, "http://localhost:8000");
+    assert.equal(cfg.apiKey, "");
+  });
+});
+
+describe("askJev (live, gated)", async () => {
+  const url = process.env.TEST_JEV_URL;
+  const apiKey = process.env.TEST_JEV_API_KEY;
+  test("routes a real question when TEST_JEV_URL is set", { skip: !url }, async () => {
+    const verdict = await askJev({
       question: "Give me a high-level overview of how the onboarding intent modules fit together",
       options: Object.entries({
         codegraph: "exact symbols, signatures, call paths, source",
