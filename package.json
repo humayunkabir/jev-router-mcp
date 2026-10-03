@@ -1,6 +1,6 @@
 {
   "name": "@humayunkabir/jev-router-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server that routes a question to the best tool using a Jev decision engine (/v1/systemone). Works with any Jev-compatible server — Laya is one.",
   "type": "module",
   "bin": {
