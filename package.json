@@ -1,0 +1,37 @@
+{
+  "name": "@humayunkabir/laya-router-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that routes a question to the best tool using a Laya decision engine (/v1/systemone).",
+  "type": "module",
+  "bin": {
+    "laya-router-mcp": "src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "mcp",
+    "laya",
+    "router",
+    "decision",
+    "model-context-protocol",
+    "opencode"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humayunkabir/laya-router-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.14.0",
+    "zod": "^3.25.0"
+  }
+}
