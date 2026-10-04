@@ -51,14 +51,18 @@ npm install -g @humayunkabir/jev-router-mcp
 
 ```bash
 npx -y @humayunkabir/jev-router-mcp init
+# answers two prompts (server URL, API key), offers to write your config,
+# then wires the code-routing instruction below into an existing AGENTS.md
+# (or prints exactly what to add where none exists)
 ```
 
 Answers two prompts (server URL, API key), then asks "Write to
 `~/.config/opencode/opencode.jsonc`?" — answering **y** merges the server into
 your opencode config automatically (it respects an existing `mcp.servers`
 shape; refuses and prints a snippet if your config is JSONC-with-comments it
-can't safely parse). Use `init --write` to skip the confirmation. Restart
-opencode afterwards.
+can't safely parse). Use `init --write` to skip the confirmation. Either way it
+then wires the code-routing instruction below into an existing `AGENTS.md`, or
+prints exactly what to add and where. Restart opencode afterwards.
 
 ### OpenCode (manual)
 
@@ -108,9 +112,12 @@ node src/index.js        # speaks MCP over stdio; for config use:
 ## Using it
 
 Tell the agent to consult the router before answering code-intelligence
-questions, e.g. in your `AGENTS.md`:
+questions, e.g. in your `AGENTS.md` (`jev-router-mcp init` adds this for you
+when an `AGENTS.md` exists):
 
 ```markdown
+## Code routing
+
 When a question needs code structure or repo context, call `route_code`
 first, then the MCP tool it picks (or both when the verdict says `both`).
 ```
@@ -131,9 +138,10 @@ Example session:
 npm test
 ```
 
-Unit tests cover URL normalization, body building, verdict parsing, advice and
-env aliasing. Set `TEST_JEV_URL` (and optionally `TEST_JEV_API_KEY`) to also
-run a live routing test against your server.
+Unit tests cover URL normalization, body building, verdict parsing, advice,
+env aliasing, opencode config merge/write, `init`'s interactive and
+AGENTS.md-wiring behavior. Set `TEST_JEV_URL` (and optionally
+`TEST_JEV_API_KEY`) to also run a live routing test against your server.
 
 ## License
 

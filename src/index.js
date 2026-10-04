@@ -6,16 +6,22 @@
 //   jev-router-mcp              speak MCP over stdio
 //   jev-router-mcp init         collect JEV_URL/JEV_API_KEY, then offer to
 //                               write them into your opencode config
-//   jev-router-mcp init --write same, but skip the confirmation prompt
+//   jev-router-mcp init --write same, but skip the confirmation prompt;
+//                               init also wires the code-routing instruction
+//                               into an existing AGENTS.md (or prints exactly
+//                               what to add where none exists)
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { askJev, DEFAULT_CRITERIA, adviceFor, envConfig } from "./jev.js";
 import { routerEntry, mergeConfig, configPath, loadConfig, writeConfig, snippet } from "./config.js";
+import { ensureAgentsInstruction } from "./agents.js";
 import fs from "node:fs";
 
 const { url: JEV_URL, apiKey: JEV_API_KEY, instructions: INSTRUCTIONS } = envConfig();
-const VERSION = "0.1.0";
+// Single source of truth: report the version from package.json, not a copy
+// that drifts out of sync on every release.
+const VERSION = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
 
 // -- init: interactive setup for first-time installers -----------------------
 async function init() {
@@ -49,6 +55,17 @@ async function init() {
     } else {
       console.log("\nPaste this into your opencode.json / opencode.jsonc:\n");
       console.log(snippet("jev-router", entry));
+    }
+
+    // Wire the code-routing instruction into AGENTS.md when one exists in the
+    // current directory; otherwise print exactly what to add and where.
+    const outcome = ensureAgentsInstruction();
+    if (outcome.status === "added") {
+      console.log(`\nAdded code-routing instructions to ${outcome.filePath} so agents consult the router first.`);
+    } else if (outcome.status === "exists") {
+      console.log(`\n${outcome.filePath} already has code-routing instructions — nothing to add.`);
+    } else {
+      console.log(`\n${outcome.message}`);
     }
   } finally {
     rl.close();
